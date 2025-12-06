@@ -158,7 +158,7 @@ export class MCPClient {
     const response = await this.sendRequest(server, 'initialize', {
       protocolVersion: '1.0',
       clientInfo: {
-        name: 'WebGPU-Model-Runner',
+        name: 'GitterDone',
         version: '1.0.0'
       },
       capabilities: {

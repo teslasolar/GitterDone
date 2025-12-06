@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Model Sharding Tool for WebGPU Model Runner
+Model Sharding Tool for GitterDone
 
 Converts model weights to sharded binary format for Git LFS storage.
 Supports ONNX, PyTorch, and raw binary formats.
@@ -180,7 +180,7 @@ def generate_demo_weights(config_path, output_dir):
     }]
 
 def main():
-    parser = argparse.ArgumentParser(description='Shard model weights for WebGPU inference')
+    parser = argparse.ArgumentParser(description='Shard model weights for GitterDone inference')
     parser.add_argument('input', help='Input model file or config.json for demo generation')
     parser.add_argument('--output', '-o', default='./shards', help='Output directory')
     parser.add_argument('--size', '-s', default='50MB', help='Shard size (e.g., 50MB)')

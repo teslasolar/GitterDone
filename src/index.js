@@ -1,7 +1,7 @@
 /**
- * WebGPU Model Runner - Main Entry Point
+ * GitterDone by Konomi Systems - Main Entry Point
  *
- * Run ML models directly in the browser with GPU acceleration.
+ * Run ML models directly in the browser with WebGPU acceleration.
  */
 
 // Core modules

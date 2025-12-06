@@ -1,4 +1,4 @@
-# WebGPU Model Runner
+# GitterDone by Konomi Systems
 
 Run ML models directly in your browser with GPU acceleration via WebGPU.
 
@@ -28,8 +28,8 @@ Run ML models directly in your browser with GPU acceleration via WebGPU.
 ### 1. Clone and serve locally
 
 ```bash
-git clone https://github.com/yourusername/webgpu-model-runner
-cd webgpu-model-runner
+git clone https://github.com/teslasolar/GitterDone
+cd GitterDone
 npx serve .
 # Open http://localhost:3000
 ```
@@ -51,7 +51,7 @@ git push origin main
 ### 3. Access your model runner
 
 ```
-https://[username].github.io/webgpu-model-runner
+https://[username].github.io/GitterDone
 ```
 
 ## Architecture

@@ -1,11 +1,11 @@
 {
-  "name": "webgpu-model-runner",
-  "version": "1.0.0",
-  "description": "Run ML models directly in the browser with WebGPU acceleration",
+  "name": "gitterdone",
+  "version": "1.1.0",
+  "description": "GitterDone by Konomi Systems - Browser-based AI with WebGPU acceleration",
   "type": "module",
   "main": "src/index.js",
   "bin": {
-    "webgpu-model": "./cli/webgpu-model.js"
+    "gitterdone": "./cli/webgpu-model.js"
   },
   "scripts": {
     "start": "npx serve .",
@@ -22,11 +22,11 @@
     "browser",
     "wgsl"
   ],
-  "author": "",
+  "author": "Konomi Systems",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/user/webgpu-model-runner"
+    "url": "https://github.com/teslasolar/GitterDone"
   },
   "files": [
     "src/",

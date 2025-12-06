@@ -300,7 +300,7 @@ echo "Deployed to https://your-domain.cloudfront.net"
 `,
 
       'cloudformation.yml': `AWSTemplateFormatVersion: '2010-09-09'
-Description: WebGPU Model Hosting
+Description: GitterDone by Konomi Systems
 
 Resources:
   ModelBucket:
@@ -353,7 +353,7 @@ Outputs:
 
     files: {
       'README.md': `---
-title: WebGPU Model
+title: GitterDone
 emoji: 🧠
 colorFrom: green
 colorTo: blue
@@ -361,7 +361,7 @@ sdk: static
 pinned: false
 ---
 
-# WebGPU Model Runner
+# GitterDone by Konomi Systems
 
 Run ML models directly in your browser with WebGPU acceleration.
 `,
