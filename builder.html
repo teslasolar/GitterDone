@@ -14,13 +14,59 @@
       min-height: 100vh;
     }
 
+    .top-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 30px;
+      background: rgba(0,0,0,0.5);
+      border-bottom: 1px solid #333;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+
+    .top-nav .logo {
+      font-size: 18px;
+      font-weight: bold;
+      color: #0f0;
+      text-decoration: none;
+    }
+
+    .top-nav .nav-links {
+      display: flex;
+      gap: 5px;
+    }
+
+    .top-nav .nav-links a {
+      color: #888;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.3s;
+      border: 1px solid transparent;
+    }
+
+    .top-nav .nav-links a:hover {
+      color: #0f0;
+      background: rgba(0,255,0,0.1);
+    }
+
+    .top-nav .nav-links a.active {
+      color: #0f0;
+      border-color: #0f0;
+      background: rgba(0,255,0,0.1);
+    }
+
     .container {
       max-width: 1200px;
       margin: 0 auto;
       padding: 40px 20px;
     }
 
-    header {
+    .page-header {
       text-align: center;
       margin-bottom: 40px;
     }
@@ -330,8 +376,17 @@
   </style>
 </head>
 <body>
+  <nav class="top-nav">
+    <a href="index.html" class="logo">WebGPU Model Runner</a>
+    <div class="nav-links">
+      <a href="index.html">Inference</a>
+      <a href="builder.html" class="active">Builder</a>
+      <a href="https://github.com/user/webgpu-model-runner" target="_blank">GitHub</a>
+    </div>
+  </nav>
+
   <div class="container">
-    <header>
+    <header class="page-header">
       <h1>WebGPU Model Builder</h1>
       <p class="subtitle">Design custom LLMs for browser inference</p>
     </header>

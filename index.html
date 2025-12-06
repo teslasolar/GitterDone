@@ -82,6 +82,40 @@
       text-shadow: 0 0 10px #0f0;
     }
 
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .nav a {
+      color: #888;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      transition: all 0.3s;
+      border: 1px solid transparent;
+    }
+
+    .nav a:hover {
+      color: #0f0;
+      border-color: #0f03;
+      background: #0f01;
+    }
+
+    .nav a.active {
+      color: #0f0;
+      border-color: #0f0;
+      background: #0f01;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
     .status-badge {
       display: inline-flex;
       align-items: center;
@@ -409,9 +443,16 @@
   <div class="grid">
     <header class="header">
       <div class="logo">WebGPU Model Runner</div>
-      <div class="status-badge loading" id="status">
-        <span class="status-dot"></span>
-        <span id="status-text">Initializing</span>
+      <nav class="nav">
+        <a href="index.html" class="active">Inference</a>
+        <a href="builder.html">Builder</a>
+        <a href="https://github.com/user/webgpu-model-runner" target="_blank">GitHub</a>
+      </nav>
+      <div class="header-right">
+        <div class="status-badge loading" id="status">
+          <span class="status-dot"></span>
+          <span id="status-text">Initializing</span>
+        </div>
       </div>
     </header>
 
