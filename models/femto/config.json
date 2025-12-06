@@ -1,0 +1,190 @@
+{
+  "name": "FemtoLLM",
+  "version": "1.0.0",
+  "description": "Tiny demonstration language model for WebGPU inference",
+  "architecture": "transformer",
+  "parameters": 65984,
+  "vocab_size": 256,
+  "embed_dim": 64,
+  "hidden_dim": 128,
+  "num_heads": 4,
+  "num_layers": 2,
+  "max_seq_len": 128,
+  "shards": 1,
+  "shard_size": 263936,
+  "dtype": "float32",
+  "layers": [
+    {
+      "name": "embed",
+      "type": "embedding",
+      "params": {
+        "vocab_size": 256,
+        "embed_dim": 64
+      },
+      "weight_offset": 0,
+      "weight_size": 65536,
+      "input_shape": [
+        128
+      ],
+      "output_shape": [
+        128,
+        64
+      ]
+    },
+    {
+      "name": "ln1",
+      "type": "layernorm",
+      "params": {
+        "epsilon": 0.00001
+      },
+      "weight_offset": 65536,
+      "weight_size": 256,
+      "bias_offset": 65792,
+      "bias_size": 256,
+      "input_shape": [
+        128,
+        64
+      ],
+      "output_shape": [
+        128,
+        64
+      ]
+    },
+    {
+      "name": "attn",
+      "type": "attention",
+      "params": {
+        "num_heads": 4,
+        "head_dim": 16,
+        "seq_len": 128
+      },
+      "weight_offset": 66048,
+      "weight_size": 16384,
+      "input_shape": [
+        128,
+        64
+      ],
+      "output_shape": [
+        128,
+        64
+      ]
+    },
+    {
+      "name": "ln2",
+      "type": "layernorm",
+      "params": {
+        "epsilon": 0.00001
+      },
+      "weight_offset": 82432,
+      "weight_size": 256,
+      "bias_offset": 82688,
+      "bias_size": 256,
+      "input_shape": [
+        128,
+        64
+      ],
+      "output_shape": [
+        128,
+        64
+      ]
+    },
+    {
+      "name": "ffn",
+      "type": "linear",
+      "params": {
+        "in_features": 64,
+        "out_features": 128,
+        "weight_shape": [
+          64,
+          128
+        ]
+      },
+      "weight_offset": 82944,
+      "weight_size": 32768,
+      "bias_offset": 115712,
+      "bias_size": 512,
+      "input_shape": [
+        128,
+        64
+      ],
+      "output_shape": [
+        128,
+        128
+      ]
+    },
+    {
+      "name": "gelu",
+      "type": "gelu",
+      "params": {},
+      "input_shape": [
+        128,
+        128
+      ],
+      "output_shape": [
+        128,
+        128
+      ]
+    },
+    {
+      "name": "proj",
+      "type": "linear",
+      "params": {
+        "in_features": 128,
+        "out_features": 64,
+        "weight_shape": [
+          128,
+          64
+        ]
+      },
+      "weight_offset": 116224,
+      "weight_size": 32768,
+      "bias_offset": 148992,
+      "bias_size": 256,
+      "input_shape": [
+        128,
+        128
+      ],
+      "output_shape": [
+        128,
+        64
+      ]
+    },
+    {
+      "name": "lm_head",
+      "type": "linear",
+      "params": {
+        "in_features": 64,
+        "out_features": 256,
+        "weight_shape": [
+          64,
+          256
+        ]
+      },
+      "weight_offset": 149248,
+      "weight_size": 65536,
+      "input_shape": [
+        128,
+        64
+      ],
+      "output_shape": [
+        128,
+        256
+      ]
+    },
+    {
+      "name": "output",
+      "type": "softmax",
+      "params": {
+        "temperature": 1
+      },
+      "input_shape": [
+        128,
+        256
+      ],
+      "output_shape": [
+        128,
+        256
+      ]
+    }
+  ]
+}

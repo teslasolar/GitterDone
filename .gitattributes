@@ -1,0 +1,22 @@
+# Git LFS configuration for large model files
+
+# Binary weight files
+*.bin filter=lfs diff=lfs merge=lfs -text
+
+# ONNX models
+*.onnx filter=lfs diff=lfs merge=lfs -text
+
+# PyTorch models
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.pth filter=lfs diff=lfs merge=lfs -text
+
+# SafeTensors
+*.safetensors filter=lfs diff=lfs merge=lfs -text
+
+# Large data files
+*.npy filter=lfs diff=lfs merge=lfs -text
+*.npz filter=lfs diff=lfs merge=lfs -text
+
+# Compressed models
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.tar.gz filter=lfs diff=lfs merge=lfs -text

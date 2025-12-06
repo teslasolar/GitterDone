@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebGPU Model Runner</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #0a0a0a;
+      color: #0f0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 300px 1fr 280px;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+      padding: 10px;
+      min-height: 100vh;
+    }
+
+    .panel {
+      background: #111;
+      border: 1px solid #0f0;
+      border-radius: 4px;
+      padding: 15px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #0f0, transparent);
+      animation: scan 2s linear infinite;
+    }
+
+    @keyframes scan {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .panel h3 {
+      color: #0f0;
+      margin-bottom: 15px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: linear-gradient(180deg, #1a1a1a, #0a0a0a);
+      border-bottom: 1px solid #0f0;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0f0;
+      text-shadow: 0 0 10px #0f0;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      background: #1a1a1a;
+      border: 1px solid currentColor;
+    }
+
+    .status-badge.ready { color: #0f0; }
+    .status-badge.loading { color: #ff0; }
+    .status-badge.error { color: #f00; }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* GPU Panel */
+    #gpu-info {
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    #gpu-info .row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dotted #333;
+      padding: 4px 0;
+    }
+
+    #gpu-info .label {
+      color: #888;
+    }
+
+    #gpu-info .value {
+      color: #0f0;
+    }
+
+    /* Tensor Visualization */
+    #viz-container {
+      width: 100%;
+      height: 200px;
+      background: #000;
+      border: 1px solid #333;
+      margin-top: 10px;
+      position: relative;
+    }
+
+    #tensor-viz {
+      width: 100%;
+      height: 100%;
+    }
+
+    .viz-legend {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      font-size: 10px;
+      color: #666;
+    }
+
+    /* Model Panel */
+    .model-select {
+      width: 100%;
+      padding: 10px;
+      background: #1a1a1a;
+      border: 1px solid #0f0;
+      color: #0f0;
+      font-family: inherit;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    .model-select option {
+      background: #1a1a1a;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      background: transparent;
+      border: 1px solid #0f0;
+      color: #0f0;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.3s;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .btn:hover {
+      background: #0f02;
+      box-shadow: 0 0 10px #0f0;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn.stop {
+      border-color: #f00;
+      color: #f00;
+    }
+
+    .btn.stop:hover {
+      background: #f002;
+      box-shadow: 0 0 10px #f00;
+    }
+
+    /* Main I/O */
+    .io-panel {
+      grid-column: 2;
+      grid-row: 2;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #input {
+      width: 100%;
+      height: 100px;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      color: #0f0;
+      padding: 10px;
+      font-family: inherit;
+      resize: vertical;
+      margin-bottom: 10px;
+    }
+
+    #input:focus {
+      outline: none;
+      border-color: #0f0;
+    }
+
+    #output {
+      flex: 1;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      padding: 15px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      min-height: 300px;
+    }
+
+    .output-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 16px;
+      background: #0f0;
+      animation: blink 0.5s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* Stats Panel */
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px dotted #333;
+    }
+
+    .stat-label {
+      color: #888;
+    }
+
+    .stat-value {
+      color: #0f0;
+      font-weight: bold;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #333;
+      border-radius: 2px;
+      margin-top: 5px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #0f0;
+      transition: width 0.3s;
+    }
+
+    /* Layer Navigator */
+    .layer-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 10px;
+    }
+
+    .layer-btn {
+      padding: 5px 10px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #666;
+      cursor: pointer;
+      font-size: 10px;
+    }
+
+    .layer-btn.active {
+      border-color: #0f0;
+      color: #0f0;
+    }
+
+    /* Footer */
+    .footer {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 10px;
+      color: #444;
+      font-size: 11px;
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 3px solid #333;
+      border-top-color: #0f0;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      margin-top: 20px;
+      color: #0f0;
+    }
+
+    /* Error message */
+    .error-msg {
+      color: #f00;
+      background: #f002;
+      padding: 10px;
+      border: 1px solid #f00;
+      margin-top: 10px;
+      display: none;
+    }
+
+    .error-msg.show {
+      display: block;
+    }
+
+    /* Model info */
+    .model-info {
+      font-size: 11px;
+      color: #666;
+      margin-top: 10px;
+    }
+
+    .model-info span {
+      color: #0f0;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .controls .btn {
+      flex: 1;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .io-panel {
+        grid-column: 1;
+        grid-row: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-overlay" id="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loading-text">Initializing WebGPU...</div>
+  </div>
+
+  <div class="grid">
+    <header class="header">
+      <div class="logo">WebGPU Model Runner</div>
+      <div class="status-badge loading" id="status">
+        <span class="status-dot"></span>
+        <span id="status-text">Initializing</span>
+      </div>
+    </header>
+
+    <!-- Left Panel: GPU & Visualization -->
+    <div class="panel">
+      <h3>GPU Status</h3>
+      <div id="gpu-info">
+        <div class="row">
+          <span class="label">Status</span>
+          <span class="value" id="gpu-status">Checking...</span>
+        </div>
+        <div class="row">
+          <span class="label">Adapter</span>
+          <span class="value" id="gpu-adapter">-</span>
+        </div>
+        <div class="row">
+          <span class="label">Max Buffer</span>
+          <span class="value" id="gpu-buffer">-</span>
+        </div>
+        <div class="row">
+          <span class="label">Max Workgroups</span>
+          <span class="value" id="gpu-workgroups">-</span>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 20px;">Tensor Visualization</h3>
+      <div id="viz-container">
+        <canvas id="tensor-viz"></canvas>
+        <div class="viz-legend">Layer weights</div>
+      </div>
+
+      <div class="layer-nav" id="layer-nav"></div>
+    </div>
+
+    <!-- Center Panel: Model I/O -->
+    <div class="panel io-panel">
+      <h3>Model I/O</h3>
+
+      <select class="model-select" id="model-select">
+        <option value="models/femto">FemtoLLM (50KB) - Demo</option>
+        <option value="models/tiny">TinyLLM (5MB) - Fast</option>
+        <option value="models/small">SmallLLM (50MB) - Balanced</option>
+        <option value="custom">Custom URL...</option>
+      </select>
+
+      <div id="custom-url-container" style="display: none; margin-bottom: 10px;">
+        <input type="text" id="custom-url" placeholder="Enter model URL..."
+               style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #333; color: #0f0;">
+      </div>
+
+      <textarea id="input" placeholder="Enter your prompt here..."></textarea>
+
+      <div class="controls">
+        <button class="btn" id="generate-btn" onclick="generate()">Generate</button>
+        <button class="btn stop" id="stop-btn" onclick="stop()" disabled>Stop</button>
+      </div>
+
+      <div id="output"></div>
+
+      <div class="error-msg" id="error"></div>
+    </div>
+
+    <!-- Right Panel: Stats -->
+    <div class="panel">
+      <h3>Performance</h3>
+
+      <div class="stat-row">
+        <span class="stat-label">Tokens/sec</span>
+        <span class="stat-value" id="stat-tps">0.0</span>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-label">Total Tokens</span>
+        <span class="stat-value" id="stat-tokens">0</span>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-label">GPU Time</span>
+        <span class="stat-value" id="stat-gpu-time">0ms</span>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-label">Memory Used</span>
+        <span class="stat-value" id="stat-memory">0 MB</span>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-label">Model Loaded</span>
+        <span class="stat-value" id="stat-model-loaded">No</span>
+      </div>
+
+      <h3 style="margin-top: 20px;">Generation Settings</h3>
+
+      <div class="stat-row">
+        <span class="stat-label">Temperature</span>
+        <input type="range" id="temp-slider" min="0.1" max="2" step="0.1" value="0.8"
+               style="width: 80px; accent-color: #0f0;">
+        <span class="stat-value" id="temp-value">0.8</span>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-label">Max Tokens</span>
+        <input type="range" id="tokens-slider" min="10" max="500" step="10" value="100"
+               style="width: 80px; accent-color: #0f0;">
+        <span class="stat-value" id="tokens-value">100</span>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-label">Top-K</span>
+        <input type="range" id="topk-slider" min="1" max="100" step="1" value="40"
+               style="width: 80px; accent-color: #0f0;">
+        <span class="stat-value" id="topk-value">40</span>
+      </div>
+
+      <h3 style="margin-top: 20px;">Model Info</h3>
+      <div class="model-info" id="model-info">
+        No model loaded
+      </div>
+
+      <div style="margin-top: 15px;">
+        <div class="stat-label">Load Progress</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      WebGPU Model Runner | Running models directly in your browser with GPU acceleration
+    </footer>
+  </div>
+
+  <script type="module">
+    import { GPUCore } from './src/gpu-core.js'
+    import { TensorCube } from './src/tensor-cube.js'
+    import { ShardArray } from './src/shard-array.js'
+    import { ModelCore } from './src/model-core.js'
+    import { Pipeline } from './src/pipeline.js'
+
+    // Global state
+    let gpu = null
+    let model = null
+    let pipeline = null
+    let isGenerating = false
+
+    // DOM elements
+    const loadingEl = document.getElementById('loading')
+    const loadingTextEl = document.getElementById('loading-text')
+    const statusEl = document.getElementById('status')
+    const statusTextEl = document.getElementById('status-text')
+    const outputEl = document.getElementById('output')
+    const errorEl = document.getElementById('error')
+    const generateBtn = document.getElementById('generate-btn')
+    const stopBtn = document.getElementById('stop-btn')
+
+    // Initialize
+    async function init() {
+      try {
+        // Check WebGPU support
+        if (!navigator.gpu) {
+          throw new Error('WebGPU not supported. Please use Chrome 113+ or Edge 113+')
+        }
+
+        loadingTextEl.textContent = 'Initializing GPU...'
+
+        // Initialize GPU
+        gpu = new GPUCore()
+        await gpu.init()
+
+        // Update GPU info
+        updateGPUInfo()
+
+        loadingTextEl.textContent = 'Loading model...'
+
+        // Load default model
+        await loadModel('models/femto')
+
+        // Hide loading
+        loadingEl.classList.add('hidden')
+        setStatus('ready', 'Ready')
+
+      } catch (error) {
+        console.error('Initialization failed:', error)
+        showError(error.message)
+        loadingTextEl.textContent = 'Error: ' + error.message
+        setStatus('error', 'Error')
+      }
+    }
+
+    // Update GPU info display
+    function updateGPUInfo() {
+      const info = gpu.getInfo()
+
+      document.getElementById('gpu-status').textContent = gpu.initialized ? 'Active' : 'Inactive'
+      document.getElementById('gpu-adapter').textContent = info.vendor || 'Unknown'
+      document.getElementById('gpu-buffer').textContent = formatBytes(info.limits.maxBufferSize)
+      document.getElementById('gpu-workgroups').textContent = info.limits.maxComputeWorkgroupsPerDimension.toLocaleString()
+    }
+
+    // Load model
+    async function loadModel(modelUrl) {
+      try {
+        setStatus('loading', 'Loading model...')
+
+        // Clean up previous model
+        if (model) {
+          model.destroy()
+        }
+
+        model = new ModelCore(gpu)
+        await model.init(modelUrl)
+
+        pipeline = new Pipeline(model)
+        await pipeline.initTokenizer()
+
+        // Update UI
+        updateModelInfo()
+        setStatus('ready', 'Ready')
+        document.getElementById('stat-model-loaded').textContent = 'Yes'
+
+        // Initialize visualization
+        initTensorViz()
+
+      } catch (error) {
+        console.error('Failed to load model:', error)
+        showError('Failed to load model: ' + error.message)
+        setStatus('error', 'Load failed')
+      }
+    }
+
+    // Update model info display
+    function updateModelInfo() {
+      const info = model.getInfo()
+      document.getElementById('model-info').innerHTML = `
+        <div>Name: <span>${info.name}</span></div>
+        <div>Layers: <span>${info.layers}</span></div>
+        <div>Parameters: <span>${formatNumber(info.parameters)}</span></div>
+        <div>Vocab Size: <span>${info.vocabSize.toLocaleString()}</span></div>
+        <div>Embed Dim: <span>${info.embedDim}</span></div>
+      `
+
+      // Update layer navigation
+      const layerNav = document.getElementById('layer-nav')
+      layerNav.innerHTML = ''
+      for (let i = 0; i < info.layers; i++) {
+        const btn = document.createElement('button')
+        btn.className = 'layer-btn' + (i === 0 ? ' active' : '')
+        btn.textContent = `L${i}`
+        btn.onclick = () => visualizeLayer(i)
+        layerNav.appendChild(btn)
+      }
+    }
+
+    // Generate text
+    window.generate = async function() {
+      const input = document.getElementById('input').value.trim()
+      if (!input || !pipeline) return
+
+      isGenerating = true
+      generateBtn.disabled = true
+      stopBtn.disabled = false
+      outputEl.innerHTML = ''
+      hideError()
+
+      const temperature = parseFloat(document.getElementById('temp-slider').value)
+      const maxTokens = parseInt(document.getElementById('tokens-slider').value)
+      const topK = parseInt(document.getElementById('topk-slider').value)
+
+      const startTime = performance.now()
+      let tokenCount = 0
+
+      try {
+        for await (const token of pipeline.generate(input, {
+          maxTokens,
+          temperature,
+          topK,
+          onToken: (info) => {
+            tokenCount++
+            updateStats(tokenCount, startTime)
+          }
+        })) {
+          outputEl.innerHTML += token
+          outputEl.scrollTop = outputEl.scrollHeight
+        }
+      } catch (error) {
+        console.error('Generation error:', error)
+        showError('Generation failed: ' + error.message)
+      } finally {
+        isGenerating = false
+        generateBtn.disabled = false
+        stopBtn.disabled = true
+      }
+    }
+
+    // Stop generation
+    window.stop = function() {
+      if (pipeline && isGenerating) {
+        pipeline.stop()
+      }
+    }
+
+    // Update stats display
+    function updateStats(tokens, startTime) {
+      const elapsed = performance.now() - startTime
+      const tps = tokens / (elapsed / 1000)
+
+      document.getElementById('stat-tps').textContent = tps.toFixed(1)
+      document.getElementById('stat-tokens').textContent = tokens
+      document.getElementById('stat-gpu-time').textContent = elapsed.toFixed(0) + 'ms'
+
+      if (performance.memory) {
+        document.getElementById('stat-memory').textContent =
+          (performance.memory.usedJSHeapSize / 1e6).toFixed(1) + ' MB'
+      }
+    }
+
+    // Tensor visualization
+    function initTensorViz() {
+      const canvas = document.getElementById('tensor-viz')
+      const ctx = canvas.getContext('2d')
+      canvas.width = canvas.parentElement.clientWidth - 2
+      canvas.height = 200
+
+      // Draw placeholder pattern
+      drawTensorPattern(ctx, canvas.width, canvas.height)
+    }
+
+    function drawTensorPattern(ctx, width, height) {
+      ctx.fillStyle = '#000'
+      ctx.fillRect(0, 0, width, height)
+
+      // Generate random-ish pattern to represent weights
+      for (let y = 0; y < height; y += 4) {
+        for (let x = 0; x < width; x += 4) {
+          const val = Math.sin(x * 0.1) * Math.cos(y * 0.1) * 0.5 + 0.5
+          const green = Math.floor(val * 255)
+          ctx.fillStyle = `rgb(0, ${green}, 0)`
+          ctx.fillRect(x, y, 3, 3)
+        }
+      }
+    }
+
+    async function visualizeLayer(layerIndex) {
+      // Update active button
+      const buttons = document.querySelectorAll('.layer-btn')
+      buttons.forEach((btn, i) => {
+        btn.classList.toggle('active', i === layerIndex)
+      })
+
+      // Visualize layer weights if available
+      if (model && model.layers[layerIndex]) {
+        const canvas = document.getElementById('tensor-viz')
+        const ctx = canvas.getContext('2d')
+
+        try {
+          await model.loadLayerWeights(model.layers[layerIndex])
+          const layer = model.layers[layerIndex]
+
+          if (layer.weights) {
+            const data = await model.tensorCube.readTensor(layer.weights.name)
+            drawTensor(ctx, data, canvas.width, canvas.height)
+          }
+        } catch (e) {
+          // Use pattern if weights not available
+          drawTensorPattern(ctx, canvas.width, canvas.height)
+        }
+      }
+    }
+
+    function drawTensor(ctx, data, width, height) {
+      const imgData = ctx.createImageData(width, height)
+      const numPixels = width * height
+
+      // Find min/max for normalization
+      let min = Infinity, max = -Infinity
+      for (let i = 0; i < Math.min(data.length, numPixels); i++) {
+        if (data[i] < min) min = data[i]
+        if (data[i] > max) max = data[i]
+      }
+
+      const range = max - min || 1
+
+      for (let i = 0; i < numPixels; i++) {
+        const val = i < data.length ? (data[i] - min) / range : 0
+        const green = Math.floor(val * 255)
+        imgData.data[i * 4] = 0
+        imgData.data[i * 4 + 1] = green
+        imgData.data[i * 4 + 2] = 0
+        imgData.data[i * 4 + 3] = 255
+      }
+
+      ctx.putImageData(imgData, 0, 0)
+    }
+
+    // UI Helpers
+    function setStatus(type, text) {
+      statusEl.className = 'status-badge ' + type
+      statusTextEl.textContent = text
+    }
+
+    function showError(message) {
+      errorEl.textContent = message
+      errorEl.classList.add('show')
+    }
+
+    function hideError() {
+      errorEl.classList.remove('show')
+    }
+
+    function formatBytes(bytes) {
+      if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + ' GB'
+      if (bytes >= 1e6) return (bytes / 1e6).toFixed(1) + ' MB'
+      if (bytes >= 1e3) return (bytes / 1e3).toFixed(1) + ' KB'
+      return bytes + ' B'
+    }
+
+    function formatNumber(num) {
+      if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B'
+      if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M'
+      if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K'
+      return num.toString()
+    }
+
+    // Event listeners
+    document.getElementById('model-select').addEventListener('change', async (e) => {
+      const value = e.target.value
+      const customContainer = document.getElementById('custom-url-container')
+
+      if (value === 'custom') {
+        customContainer.style.display = 'block'
+      } else {
+        customContainer.style.display = 'none'
+        await loadModel(value)
+      }
+    })
+
+    document.getElementById('custom-url').addEventListener('keypress', async (e) => {
+      if (e.key === 'Enter') {
+        await loadModel(e.target.value)
+      }
+    })
+
+    // Settings sliders
+    document.getElementById('temp-slider').addEventListener('input', (e) => {
+      document.getElementById('temp-value').textContent = e.target.value
+    })
+
+    document.getElementById('tokens-slider').addEventListener('input', (e) => {
+      document.getElementById('tokens-value').textContent = e.target.value
+    })
+
+    document.getElementById('topk-slider').addEventListener('input', (e) => {
+      document.getElementById('topk-value').textContent = e.target.value
+    })
+
+    // Keyboard shortcut
+    document.getElementById('input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        generate()
+      }
+    })
+
+    // Initialize on load
+    init()
+  </script>
+</body>
+</html>
