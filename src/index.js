@@ -4,13 +4,22 @@
  * Run ML models directly in the browser with GPU acceleration.
  */
 
+// Core modules
 export { GPUCore } from './gpu-core.js'
 export { TensorCube } from './tensor-cube.js'
 export { ShardArray } from './shard-array.js'
 export { ModelCore } from './model-core.js'
 export { Pipeline } from './pipeline.js'
+
+// Visualization & distribution
 export { ModelSpace } from './model-space.js'
 export { DistributedGPU } from './distributed-gpu.js'
+
+// Model creation & optimization
+export { ModelBuilder } from './model-builder.js'
+export { Quantization } from './quantization.js'
+export { ModelHub } from './model-hub.js'
+export { FineTuner } from './fine-tuner.js'
 
 // Quick setup function
 export async function createModelRunner(modelUrl, options = {}) {

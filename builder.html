@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebGPU Model Builder</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #0f0, #0ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 1.1rem;
+    }
+
+    .wizard {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 30px;
+    }
+
+    .sidebar {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .steps {
+      list-style: none;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .step:hover { background: rgba(0,255,0,0.1); }
+    .step.active { background: rgba(0,255,0,0.2); border-left: 3px solid #0f0; }
+    .step.completed { opacity: 0.7; }
+    .step.completed::before { content: '✓'; color: #0f0; }
+
+    .step-num {
+      width: 30px;
+      height: 30px;
+      background: #333;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    .step.active .step-num { background: #0f0; color: #000; }
+
+    .main-content {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 30px;
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    h2 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #0f0;
+    }
+
+    .presets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .preset-card {
+      background: rgba(0,0,0,0.3);
+      border: 2px solid #333;
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .preset-card:hover { border-color: #0f0; transform: translateY(-2px); }
+    .preset-card.selected { border-color: #0f0; background: rgba(0,255,0,0.1); }
+
+    .preset-name {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .preset-size {
+      color: #0f0;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+
+    .preset-desc {
+      color: #888;
+      font-size: 0.85rem;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #aaa;
+      font-size: 0.9rem;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #0f0;
+    }
+
+    .range-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .range-group input[type="range"] {
+      flex: 1;
+      accent-color: #0f0;
+    }
+
+    .range-value {
+      min-width: 80px;
+      text-align: right;
+      color: #0f0;
+      font-family: monospace;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .summary-box {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .summary-row:last-child { border-bottom: none; }
+    .summary-value { color: #0f0; font-weight: bold; }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: #0f0;
+      color: #000;
+    }
+
+    .btn-primary:hover { background: #0c0; }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid #0f0;
+      color: #0f0;
+    }
+
+    .btn-secondary:hover { background: rgba(0,255,0,0.1); }
+
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #333;
+    }
+
+    .layer-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .layer-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+
+    .layer-icon {
+      width: 40px;
+      height: 40px;
+      background: #333;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .layer-info { flex: 1; }
+    .layer-name { font-weight: bold; }
+    .layer-type { color: #888; font-size: 0.85rem; }
+    .layer-size { color: #0f0; }
+
+    .code-preview {
+      background: #000;
+      border-radius: 8px;
+      padding: 20px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .code-preview code {
+      color: #0f0;
+    }
+
+    .download-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .download-option {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .download-option:hover { border-color: #0f0; }
+    .download-icon { font-size: 2rem; margin-bottom: 10px; }
+
+    .progress-container {
+      margin-top: 20px;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #0f0;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      text-align: center;
+      margin-top: 10px;
+      color: #888;
+    }
+
+    @media (max-width: 768px) {
+      .wizard { grid-template-columns: 1fr; }
+      .config-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>WebGPU Model Builder</h1>
+      <p class="subtitle">Design custom LLMs for browser inference</p>
+    </header>
+
+    <div class="wizard">
+      <aside class="sidebar">
+        <ul class="steps">
+          <li class="step active" data-step="1">
+            <span class="step-num">1</span>
+            <span>Choose Template</span>
+          </li>
+          <li class="step" data-step="2">
+            <span class="step-num">2</span>
+            <span>Configure Model</span>
+          </li>
+          <li class="step" data-step="3">
+            <span class="step-num">3</span>
+            <span>Review Layers</span>
+          </li>
+          <li class="step" data-step="4">
+            <span class="step-num">4</span>
+            <span>Generate & Export</span>
+          </li>
+        </ul>
+      </aside>
+
+      <main class="main-content">
+        <!-- Step 1: Choose Template -->
+        <div class="panel active" data-panel="1">
+          <h2>Choose a Template</h2>
+          <p style="color:#888;margin-bottom:20px">Select a starting point for your model</p>
+
+          <div class="presets-grid">
+            <div class="preset-card" data-preset="nano-gpt">
+              <div class="preset-name">NanoGPT</div>
+              <div class="preset-size">~500 KB</div>
+              <div class="preset-desc">Tiny model for learning and demos. Perfect for edge devices.</div>
+            </div>
+
+            <div class="preset-card selected" data-preset="micro-llm">
+              <div class="preset-name">MicroLLM</div>
+              <div class="preset-size">~5 MB</div>
+              <div class="preset-desc">Small but capable. Great for mobile and browser apps.</div>
+            </div>
+
+            <div class="preset-card" data-preset="small-llm">
+              <div class="preset-name">SmallLLM</div>
+              <div class="preset-size">~50 MB</div>
+              <div class="preset-desc">Balanced performance. Good for general purpose chatbots.</div>
+            </div>
+
+            <div class="preset-card" data-preset="medium-llm">
+              <div class="preset-name">MediumLLM</div>
+              <div class="preset-size">~300 MB</div>
+              <div class="preset-desc">Strong performance. For production quality output.</div>
+            </div>
+
+            <div class="preset-card" data-preset="code-model">
+              <div class="preset-name">CodeModel</div>
+              <div class="preset-size">~150 MB</div>
+              <div class="preset-desc">Optimized for code generation with larger context.</div>
+            </div>
+
+            <div class="preset-card" data-preset="custom">
+              <div class="preset-name">Custom</div>
+              <div class="preset-size">You decide</div>
+              <div class="preset-desc">Start from scratch with full control over architecture.</div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <div></div>
+            <button class="btn btn-primary" onclick="nextStep()">Next: Configure →</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Configure Model -->
+        <div class="panel" data-panel="2">
+          <h2>Configure Your Model</h2>
+
+          <div class="form-group">
+            <label>Model Name</label>
+            <input type="text" id="model-name" value="MyModel" placeholder="Enter model name">
+          </div>
+
+          <div class="config-grid">
+            <div class="form-group">
+              <label>Vocabulary Size</label>
+              <div class="range-group">
+                <input type="range" id="vocab-size" min="256" max="100000" step="1000" value="8000">
+                <span class="range-value" id="vocab-size-val">8,000</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Embedding Dimension</label>
+              <div class="range-group">
+                <input type="range" id="embed-dim" min="64" max="2048" step="64" value="256">
+                <span class="range-value" id="embed-dim-val">256</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Hidden Dimension</label>
+              <div class="range-group">
+                <input type="range" id="hidden-dim" min="128" max="8192" step="128" value="512">
+                <span class="range-value" id="hidden-dim-val">512</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Number of Layers</label>
+              <div class="range-group">
+                <input type="range" id="num-layers" min="1" max="32" step="1" value="4">
+                <span class="range-value" id="num-layers-val">4</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Attention Heads</label>
+              <div class="range-group">
+                <input type="range" id="num-heads" min="1" max="32" step="1" value="8">
+                <span class="range-value" id="num-heads-val">8</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Max Sequence Length</label>
+              <div class="range-group">
+                <input type="range" id="max-seq-len" min="64" max="8192" step="64" value="256">
+                <span class="range-value" id="max-seq-len-val">256</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="summary-box">
+            <h3 style="margin-bottom:15px">Estimated Model Stats</h3>
+            <div class="summary-row">
+              <span>Parameters</span>
+              <span class="summary-value" id="est-params">5.2M</span>
+            </div>
+            <div class="summary-row">
+              <span>Size (FP32)</span>
+              <span class="summary-value" id="est-size">20.8 MB</span>
+            </div>
+            <div class="summary-row">
+              <span>Size (INT8)</span>
+              <span class="summary-value" id="est-size-int8">5.2 MB</span>
+            </div>
+            <div class="summary-row">
+              <span>Shards (50MB each)</span>
+              <span class="summary-value" id="est-shards">1</span>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="prevStep()">← Back</button>
+            <button class="btn btn-primary" onclick="nextStep()">Next: Review Layers →</button>
+          </div>
+        </div>
+
+        <!-- Step 3: Review Layers -->
+        <div class="panel" data-panel="3">
+          <h2>Model Architecture</h2>
+          <p style="color:#888;margin-bottom:20px">Review the generated layer structure</p>
+
+          <div class="layer-list" id="layer-list">
+            <!-- Populated by JS -->
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="prevStep()">← Back</button>
+            <button class="btn btn-primary" onclick="nextStep()">Next: Generate →</button>
+          </div>
+        </div>
+
+        <!-- Step 4: Generate & Export -->
+        <div class="panel" data-panel="4">
+          <h2>Generate & Export</h2>
+
+          <div class="code-preview">
+            <code id="config-preview">// config.json will appear here</code>
+          </div>
+
+          <div class="download-options">
+            <div class="download-option" onclick="downloadConfig()">
+              <div class="download-icon">📄</div>
+              <div>config.json</div>
+            </div>
+            <div class="download-option" onclick="downloadTokenizer()">
+              <div class="download-icon">🔤</div>
+              <div>tokenizer.json</div>
+            </div>
+            <div class="download-option" onclick="generateWeights()">
+              <div class="download-icon">⚖️</div>
+              <div>Generate Weights</div>
+            </div>
+            <div class="download-option" onclick="downloadAll()">
+              <div class="download-icon">📦</div>
+              <div>Download All</div>
+            </div>
+          </div>
+
+          <div class="progress-container" id="progress-container" style="display:none">
+            <div class="progress-bar">
+              <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-text" id="progress-text">Generating...</div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="prevStep()">← Back</button>
+            <button class="btn btn-primary" onclick="deployModel()">Deploy to GitHub Pages →</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module">
+    import { ModelBuilder } from './src/model-builder.js'
+
+    const builder = new ModelBuilder()
+    let currentStep = 1
+
+    // Initialize
+    document.querySelectorAll('.preset-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('selected'))
+        card.classList.add('selected')
+
+        const preset = card.dataset.preset
+        if (preset !== 'custom') {
+          builder.applyPreset(preset)
+          updateConfigInputs()
+        }
+      })
+    })
+
+    // Setup range inputs
+    const rangeInputs = ['vocab-size', 'embed-dim', 'hidden-dim', 'num-layers', 'num-heads', 'max-seq-len']
+    rangeInputs.forEach(id => {
+      const input = document.getElementById(id)
+      const display = document.getElementById(id + '-val')
+
+      input.addEventListener('input', () => {
+        const val = parseInt(input.value)
+        display.textContent = val.toLocaleString()
+        updateBuilder()
+      })
+    })
+
+    function updateConfigInputs() {
+      document.getElementById('vocab-size').value = builder.config.vocab_size
+      document.getElementById('embed-dim').value = builder.config.embed_dim
+      document.getElementById('hidden-dim').value = builder.config.hidden_dim
+      document.getElementById('num-layers').value = builder.config.num_layers
+      document.getElementById('num-heads').value = builder.config.num_heads
+      document.getElementById('max-seq-len').value = builder.config.max_seq_len
+
+      rangeInputs.forEach(id => {
+        const input = document.getElementById(id)
+        const display = document.getElementById(id + '-val')
+        display.textContent = parseInt(input.value).toLocaleString()
+      })
+
+      updateBuilder()
+    }
+
+    function updateBuilder() {
+      builder.config.name = document.getElementById('model-name').value
+      builder.config.vocab_size = parseInt(document.getElementById('vocab-size').value)
+      builder.config.embed_dim = parseInt(document.getElementById('embed-dim').value)
+      builder.config.hidden_dim = parseInt(document.getElementById('hidden-dim').value)
+      builder.config.num_layers = parseInt(document.getElementById('num-layers').value)
+      builder.config.num_heads = parseInt(document.getElementById('num-heads').value)
+      builder.config.max_seq_len = parseInt(document.getElementById('max-seq-len').value)
+
+      const estimate = builder.estimateSize()
+
+      document.getElementById('est-params').textContent = formatNumber(estimate.parameters)
+      document.getElementById('est-size').textContent = formatBytes(estimate.sizeBytes)
+      document.getElementById('est-size-int8').textContent = formatBytes(estimate.sizeBytes / 4)
+      document.getElementById('est-shards').textContent = estimate.shards
+    }
+
+    function formatNumber(num) {
+      if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B'
+      if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M'
+      if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K'
+      return num.toString()
+    }
+
+    function formatBytes(bytes) {
+      if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + ' GB'
+      if (bytes >= 1e6) return (bytes / 1e6).toFixed(1) + ' MB'
+      if (bytes >= 1e3) return (bytes / 1e3).toFixed(1) + ' KB'
+      return bytes + ' B'
+    }
+
+    window.nextStep = function() {
+      if (currentStep < 4) {
+        document.querySelector(`.step[data-step="${currentStep}"]`).classList.remove('active')
+        document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('completed')
+        document.querySelector(`.panel[data-panel="${currentStep}"]`).classList.remove('active')
+
+        currentStep++
+
+        document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('active')
+        document.querySelector(`.panel[data-panel="${currentStep}"]`).classList.add('active')
+
+        if (currentStep === 3) updateLayerList()
+        if (currentStep === 4) updateConfigPreview()
+      }
+    }
+
+    window.prevStep = function() {
+      if (currentStep > 1) {
+        document.querySelector(`.step[data-step="${currentStep}"]`).classList.remove('active')
+        document.querySelector(`.panel[data-panel="${currentStep}"]`).classList.remove('active')
+
+        currentStep--
+
+        document.querySelector(`.step[data-step="${currentStep}"]`).classList.remove('completed')
+        document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('active')
+        document.querySelector(`.panel[data-panel="${currentStep}"]`).classList.add('active')
+      }
+    }
+
+    function updateLayerList() {
+      builder.buildLayers()
+      const list = document.getElementById('layer-list')
+      list.innerHTML = ''
+
+      const icons = {
+        embedding: '📊',
+        attention: '🎯',
+        linear: '➡️',
+        layernorm: '📏',
+        gelu: '⚡',
+        residual: '🔄',
+        softmax: '📈'
+      }
+
+      for (const layer of builder.layers) {
+        const item = document.createElement('div')
+        item.className = 'layer-item'
+        item.innerHTML = `
+          <div class="layer-icon">${icons[layer.type] || '📦'}</div>
+          <div class="layer-info">
+            <div class="layer-name">${layer.name}</div>
+            <div class="layer-type">${layer.type}</div>
+          </div>
+          <div class="layer-size">${layer.weight_size ? formatBytes(layer.weight_size) : '-'}</div>
+        `
+        list.appendChild(item)
+      }
+    }
+
+    function updateConfigPreview() {
+      const config = builder.toConfig()
+      document.getElementById('config-preview').textContent = JSON.stringify(config, null, 2)
+    }
+
+    window.downloadConfig = function() {
+      const config = builder.toConfig()
+      downloadJSON('config.json', config)
+    }
+
+    window.downloadTokenizer = function() {
+      const tokenizer = generateTokenizer(builder.config.vocab_size)
+      downloadJSON('tokenizer.json', tokenizer)
+    }
+
+    window.generateWeights = async function() {
+      const progress = document.getElementById('progress-container')
+      const fill = document.getElementById('progress-fill')
+      const text = document.getElementById('progress-text')
+
+      progress.style.display = 'block'
+
+      builder.buildLayers()
+      const totalSize = builder.totalWeightSize
+      const buffer = new Float32Array(totalSize / 4)
+
+      // Generate in chunks to keep UI responsive
+      const chunkSize = 1000000
+      for (let i = 0; i < buffer.length; i += chunkSize) {
+        const end = Math.min(i + chunkSize, buffer.length)
+        for (let j = i; j < end; j++) {
+          buffer[j] = (Math.random() - 0.5) * 0.1
+        }
+
+        fill.style.width = ((i / buffer.length) * 100) + '%'
+        text.textContent = `Generating weights... ${Math.round(i / buffer.length * 100)}%`
+        await new Promise(r => setTimeout(r, 0))
+      }
+
+      fill.style.width = '100%'
+      text.textContent = 'Done! Downloading...'
+
+      // Download
+      const blob = new Blob([buffer], { type: 'application/octet-stream' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'shard_000.bin'
+      a.click()
+
+      setTimeout(() => progress.style.display = 'none', 2000)
+    }
+
+    window.downloadAll = async function() {
+      await window.downloadConfig()
+      await window.downloadTokenizer()
+      await window.generateWeights()
+    }
+
+    window.deployModel = function() {
+      alert('To deploy:\n\n1. Create a GitHub repo\n2. Enable Git LFS\n3. Push config.json, tokenizer.json, and shard files\n4. Enable GitHub Pages\n\nYour model will be available at:\nhttps://[username].github.io/[repo]')
+    }
+
+    function downloadJSON(filename, data) {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+    }
+
+    function generateTokenizer(vocabSize) {
+      const vocab = { '<pad>': 0, '<eos>': 1, '<bos>': 2, '<unk>': 3 }
+      for (let i = 32; i < 127 && Object.keys(vocab).length < vocabSize; i++) {
+        vocab[String.fromCharCode(i)] = Object.keys(vocab).length
+      }
+      return {
+        version: '1.0',
+        type: 'character',
+        vocab,
+        special_tokens: { pad_token_id: 0, eos_token_id: 1, bos_token_id: 2, unk_token_id: 3 }
+      }
+    }
+
+    // Initialize
+    builder.applyPreset('micro-llm')
+    updateConfigInputs()
+  </script>
+</body>
+</html>

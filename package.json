@@ -1,0 +1,42 @@
+{
+  "name": "webgpu-model-runner",
+  "version": "1.0.0",
+  "description": "Run ML models directly in the browser with WebGPU acceleration",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "webgpu-model": "./cli/webgpu-model.js"
+  },
+  "scripts": {
+    "start": "npx serve .",
+    "build": "node tools/generate_demo_weights.js",
+    "cli": "node cli/webgpu-model.js"
+  },
+  "keywords": [
+    "webgpu",
+    "gpu",
+    "machine-learning",
+    "inference",
+    "llm",
+    "transformer",
+    "browser",
+    "wgsl"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/webgpu-model-runner"
+  },
+  "files": [
+    "src/",
+    "kernels/",
+    "cli/",
+    "tools/",
+    "index.html",
+    "builder.html"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
