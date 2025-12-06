@@ -25,6 +25,9 @@ export { FineTuner } from './fine-tuner.js'
 export { PluginManager, plugins, createPlugin } from './plugins.js'
 export { LoggingPlugin, SafetyPlugin, CachingPlugin, MetricsPlugin } from './plugins.js'
 
+// MCP (Model Context Protocol)
+export * from './mcp/index.js'
+
 // Quick setup function
 export async function createModelRunner(modelUrl, options = {}) {
   const { GPUCore } = await import('./gpu-core.js')
@@ -65,5 +68,49 @@ export async function createModelRunner(modelUrl, options = {}) {
   }
 }
 
+/**
+ * Create an MCP-enabled agent runner
+ */
+export async function createAgentRunner(modelUrl, options = {}) {
+  const runner = await createModelRunner(modelUrl, options)
+  const { createAgent } = await import('./mcp/agent.js')
+
+  const agent = createAgent(runner.pipeline, {
+    ...options.agent,
+    systemPrompt: options.systemPrompt
+  })
+
+  // Connect to servers if specified
+  if (options.servers) {
+    for (const server of options.servers) {
+      await agent.mcp.connect(server)
+    }
+  }
+
+  return {
+    ...runner,
+    agent,
+
+    async runTask(task, taskOptions = {}) {
+      return agent.run(task, taskOptions)
+    },
+
+    async chat(message) {
+      agent.context.messages.push({ role: 'user', content: message })
+      return agent.run(message, { maxIterations: 1 })
+    },
+
+    addTool(tool) {
+      agent.addTool(tool)
+      return this
+    },
+
+    destroy() {
+      agent.destroy()
+      runner.destroy()
+    }
+  }
+}
+
 // Version
-export const VERSION = '1.0.0'
+export const VERSION = '1.1.0'

@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebGPU Agent - MCP Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+    }
+
+    .top-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 30px;
+      background: rgba(0,0,0,0.5);
+      border-bottom: 1px solid #333;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+
+    .top-nav .logo {
+      font-size: 18px;
+      font-weight: bold;
+      color: #0f0;
+      text-decoration: none;
+    }
+
+    .top-nav .nav-links {
+      display: flex;
+      gap: 5px;
+    }
+
+    .top-nav .nav-links a {
+      color: #888;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.3s;
+      border: 1px solid transparent;
+    }
+
+    .top-nav .nav-links a:hover {
+      color: #0f0;
+      background: rgba(0,255,0,0.1);
+    }
+
+    .top-nav .nav-links a.active {
+      color: #0f0;
+      border-color: #0f0;
+      background: rgba(0,255,0,0.1);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #0f0, #0ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 1.1rem;
+    }
+
+    .agent-interface {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+      height: calc(100vh - 200px);
+      min-height: 500px;
+    }
+
+    .sidebar {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .sidebar h3 {
+      font-size: 14px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 15px;
+    }
+
+    .tool-list {
+      list-style: none;
+    }
+
+    .tool-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      background: rgba(0,255,0,0.05);
+      border: 1px solid #333;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tool-item:hover {
+      border-color: #0f0;
+      background: rgba(0,255,0,0.1);
+    }
+
+    .tool-item.active {
+      border-color: #0f0;
+      box-shadow: 0 0 10px rgba(0,255,0,0.2);
+    }
+
+    .tool-name {
+      font-weight: bold;
+      color: #0f0;
+      font-size: 14px;
+    }
+
+    .tool-desc {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .chat-area {
+      display: flex;
+      flex-direction: column;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid #333;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .message {
+      margin-bottom: 20px;
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+      text-align: right;
+    }
+
+    .message.user .bubble {
+      background: linear-gradient(135deg, #0066ff, #0044aa);
+      margin-left: auto;
+    }
+
+    .message.assistant .bubble {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .message.tool .bubble {
+      background: rgba(0,255,0,0.1);
+      border: 1px solid #0f0;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .message.thinking .bubble {
+      background: rgba(255,200,0,0.1);
+      border: 1px solid #fc0;
+    }
+
+    .bubble {
+      display: inline-block;
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      text-align: left;
+    }
+
+    .message-label {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .tool-call {
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 8px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .tool-call .tool-name {
+      color: #0ff;
+    }
+
+    .chat-input {
+      display: flex;
+      gap: 10px;
+      padding: 20px;
+      border-top: 1px solid #333;
+      background: rgba(0,0,0,0.2);
+    }
+
+    .chat-input input {
+      flex: 1;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    .chat-input input:focus {
+      outline: none;
+      border-color: #0f0;
+    }
+
+    .chat-input button {
+      background: linear-gradient(135deg, #0f0, #0a0);
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chat-input button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(0,255,0,0.3);
+    }
+
+    .chat-input button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: rgba(0,0,0,0.3);
+      border-top: 1px solid #333;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #666;
+    }
+
+    .status-dot.active {
+      background: #0f0;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .example-tasks {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #333;
+    }
+
+    .example-tasks h4 {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 10px;
+    }
+
+    .example-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      background: none;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #aaa;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .example-btn:hover {
+      border-color: #0f0;
+      color: #0f0;
+    }
+
+    @media (max-width: 768px) {
+      .agent-interface {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+
+      .sidebar {
+        max-height: 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <a href="index.html" class="logo">WebGPU Model Runner</a>
+    <div class="nav-links">
+      <a href="index.html">Inference</a>
+      <a href="builder.html">Builder</a>
+      <a href="agent.html" class="active">Agent</a>
+      <a href="https://github.com/user/webgpu-model-runner" target="_blank">GitHub</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="page-header">
+      <h1>WebGPU Agent</h1>
+      <p class="subtitle">AI assistant with tool access via Model Context Protocol</p>
+    </header>
+
+    <div class="agent-interface">
+      <aside class="sidebar">
+        <h3>Available Tools</h3>
+        <ul class="tool-list" id="toolList">
+          <!-- Tools will be populated here -->
+        </ul>
+
+        <div class="example-tasks">
+          <h4>Try these tasks:</h4>
+          <button class="example-btn" data-task="What's the current date and time?">Get current time</button>
+          <button class="example-btn" data-task="Calculate 15% tip on $85.50">Calculate a tip</button>
+          <button class="example-btn" data-task="Fetch and summarize the content from https://example.com">Fetch a webpage</button>
+          <button class="example-btn" data-task="Store my name as 'User' in local storage">Save to storage</button>
+          <button class="example-btn" data-task="What's 2^10 + sqrt(256)?">Math calculation</button>
+        </div>
+      </aside>
+
+      <main class="chat-area">
+        <div class="chat-messages" id="chatMessages">
+          <div class="message assistant">
+            <div class="bubble">
+              <p>Hello! I'm an AI agent with access to various tools. I can:</p>
+              <ul style="margin: 10px 0; padding-left: 20px;">
+                <li>Fetch content from websites</li>
+                <li>Perform calculations</li>
+                <li>Store and retrieve data</li>
+                <li>Work with dates and times</li>
+                <li>Parse and transform JSON</li>
+              </ul>
+              <p>What would you like me to help with?</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input">
+          <input type="text" id="taskInput" placeholder="Enter a task for the agent..." />
+          <button id="sendBtn">Send</button>
+        </div>
+
+        <div class="status">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Ready</span>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      MCPClient,
+      Agent,
+      BuiltInTools,
+      registerBuiltInTools,
+      createContext
+    } from './src/mcp/index.js'
+
+    // Initialize MCP client with built-in tools
+    const mcp = new MCPClient()
+    registerBuiltInTools(mcp)
+
+    // Display available tools
+    const toolList = document.getElementById('toolList')
+    const tools = mcp.listTools()
+
+    tools.forEach(tool => {
+      const li = document.createElement('li')
+      li.className = 'tool-item'
+      li.innerHTML = `
+        <div class="tool-name">${tool.name}</div>
+        <div class="tool-desc">${tool.description}</div>
+      `
+      toolList.appendChild(li)
+    })
+
+    // Chat elements
+    const chatMessages = document.getElementById('chatMessages')
+    const taskInput = document.getElementById('taskInput')
+    const sendBtn = document.getElementById('sendBtn')
+    const statusDot = document.getElementById('statusDot')
+    const statusText = document.getElementById('statusText')
+
+    // Context for conversation
+    const context = createContext({ maxMessages: 50 })
+
+    // Add message to chat
+    function addMessage(type, content, extra = {}) {
+      const div = document.createElement('div')
+      div.className = `message ${type}`
+
+      let labelText = type.charAt(0).toUpperCase() + type.slice(1)
+      if (extra.toolName) labelText = `Tool: ${extra.toolName}`
+
+      div.innerHTML = `
+        <div class="message-label">${labelText}</div>
+        <div class="bubble">${content}</div>
+      `
+
+      chatMessages.appendChild(div)
+      chatMessages.scrollTop = chatMessages.scrollHeight
+    }
+
+    // Update status
+    function setStatus(text, active = false) {
+      statusText.textContent = text
+      statusDot.className = active ? 'status-dot active' : 'status-dot'
+    }
+
+    // Process a task (simplified agent without actual LLM)
+    async function processTask(task) {
+      sendBtn.disabled = true
+      setStatus('Processing...', true)
+
+      // Add user message
+      addMessage('user', task)
+      context.addMessage({ role: 'user', content: task })
+
+      // Simple pattern matching for tool selection
+      // In production, the LLM would decide which tools to use
+      const taskLower = task.toLowerCase()
+      let response = ''
+
+      try {
+        // Time-related tasks
+        if (taskLower.includes('time') || taskLower.includes('date')) {
+          setStatus('Calling datetime tool...', true)
+          addMessage('thinking', 'Let me check the current date and time...')
+
+          const result = await BuiltInTools.datetime.handler({ action: 'now' })
+          addMessage('tool', `<pre>${JSON.stringify(result.content, null, 2)}</pre>`, { toolName: 'datetime' })
+          response = `The current time is ${result.content.local}. In ISO format: ${result.content.iso}`
+        }
+
+        // Calculator tasks
+        else if (taskLower.includes('calculate') || taskLower.includes('math') || /[\d\+\-\*\/\^]/.test(task)) {
+          setStatus('Calling calculator tool...', true)
+          addMessage('thinking', 'Let me calculate that...')
+
+          // Extract expression
+          const expr = task.replace(/calculate|what's|what is|=\?/gi, '').trim()
+          const result = await BuiltInTools.calculator.handler({ expression: expr })
+
+          if (result.type === 'error') {
+            response = `I couldn't calculate that: ${result.content}`
+          } else {
+            addMessage('tool', `Expression: ${expr}<br>Result: ${result.content}`, { toolName: 'calculator' })
+            response = `The result is: ${result.content}`
+          }
+        }
+
+        // Fetch tasks
+        else if (taskLower.includes('fetch') || taskLower.includes('get') && taskLower.includes('http')) {
+          setStatus('Fetching URL...', true)
+          addMessage('thinking', 'Let me fetch that webpage...')
+
+          // Extract URL
+          const urlMatch = task.match(/https?:\/\/[^\s]+/)
+          if (urlMatch) {
+            try {
+              const result = await BuiltInTools.web_fetch.handler({
+                url: urlMatch[0],
+                parseAs: 'html'
+              })
+
+              if (result.type === 'error') {
+                response = `Failed to fetch: ${result.content}`
+              } else {
+                const content = result.content
+                addMessage('tool', `
+                  <strong>Title:</strong> ${content.title || 'N/A'}<br>
+                  <strong>Content preview:</strong> ${content.content?.substring(0, 200)}...
+                `, { toolName: 'web_fetch' })
+                response = `I fetched the page "${content.title}". It contains information about: ${content.content?.substring(0, 300)}...`
+              }
+            } catch (e) {
+              response = `Error fetching URL: ${e.message}`
+            }
+          } else {
+            response = "I couldn't find a URL in your request. Please include a valid URL starting with http:// or https://"
+          }
+        }
+
+        // Storage tasks
+        else if (taskLower.includes('store') || taskLower.includes('save') || taskLower.includes('remember')) {
+          setStatus('Using storage...', true)
+          addMessage('thinking', 'Let me store that for you...')
+
+          // Simple extraction
+          const asMatch = task.match(/(?:as|called|named)\s+['"]?(\w+)['"]?/i)
+          const valueMatch = task.match(/(?:store|save|remember)\s+(?:my\s+)?(\w+)\s+(?:as|is|=)\s+['"]?([^'"]+)['"]?/i)
+
+          if (asMatch || valueMatch) {
+            const key = asMatch?.[1] || valueMatch?.[1] || 'value'
+            const value = valueMatch?.[2] || 'stored'
+
+            const result = await BuiltInTools.storage.handler({
+              action: 'set',
+              key,
+              value
+            })
+
+            addMessage('tool', `Stored: ${key} = ${value}`, { toolName: 'storage' })
+            response = `I've stored "${value}" with the key "${key}". You can ask me to retrieve it later.`
+          } else {
+            response = "Please specify what you'd like to store and what key to use, like 'Store my name as John'"
+          }
+        }
+
+        // JSON tasks
+        else if (taskLower.includes('json') || taskLower.includes('parse')) {
+          setStatus('Processing JSON...', true)
+          const jsonMatch = task.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            const result = await BuiltInTools.json.handler({
+              action: 'parse',
+              data: jsonMatch[0]
+            })
+            addMessage('tool', `<pre>${JSON.stringify(result.content, null, 2)}</pre>`, { toolName: 'json' })
+            response = 'I parsed the JSON successfully. Here are the contents above.'
+          } else {
+            response = "Please provide valid JSON to parse."
+          }
+        }
+
+        // Default response
+        else {
+          response = `I understand you want me to: "${task}". While I have access to various tools (web_fetch, calculator, storage, datetime, json, etc.), I need a WebGPU-accelerated language model to fully understand and plan complex tasks. For now, try asking me about time, calculations, fetching URLs, or storing data!`
+        }
+
+      } catch (error) {
+        response = `An error occurred: ${error.message}`
+      }
+
+      // Add assistant response
+      addMessage('assistant', response)
+      context.addMessage({ role: 'assistant', content: response })
+
+      setStatus('Ready')
+      sendBtn.disabled = false
+      taskInput.focus()
+    }
+
+    // Event handlers
+    sendBtn.addEventListener('click', () => {
+      const task = taskInput.value.trim()
+      if (task) {
+        taskInput.value = ''
+        processTask(task)
+      }
+    })
+
+    taskInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendBtn.click()
+      }
+    })
+
+    // Example task buttons
+    document.querySelectorAll('.example-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        taskInput.value = btn.dataset.task
+        sendBtn.click()
+      })
+    })
+
+    // Focus input on load
+    taskInput.focus()
+  </script>
+</body>
+</html>
