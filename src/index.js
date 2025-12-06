@@ -21,6 +21,10 @@ export { Quantization } from './quantization.js'
 export { ModelHub } from './model-hub.js'
 export { FineTuner } from './fine-tuner.js'
 
+// Plugin system
+export { PluginManager, plugins, createPlugin } from './plugins.js'
+export { LoggingPlugin, SafetyPlugin, CachingPlugin, MetricsPlugin } from './plugins.js'
+
 // Quick setup function
 export async function createModelRunner(modelUrl, options = {}) {
   const { GPUCore } = await import('./gpu-core.js')
